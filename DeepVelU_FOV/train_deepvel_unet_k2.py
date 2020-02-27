@@ -51,15 +51,15 @@ class train_deepvel(object):
 		"""
 
 		# Only allocate needed memory
-		config = tf.ConfigProto()
-		config.gpu_options.allow_growth=True
-		session = tf.Session(config=config)
-		ktf.set_session(session)
+		config = tf.compat.v1.ConfigProto()
+		config.gpu_options.allow_growth = True
+		session = tf.compat.v1.Session(config=config)
+		#ktf.set_session(session)
 		self.root = root
 		self.option = option
 
 		# Neural network properties
-		self.n_filters = 64
+		self.n_filters = 1#64
 		self.kernel_size = 3
 		self.batch_size = 32
 
@@ -72,8 +72,9 @@ class train_deepvel(object):
 		self.n_components = 6
 
 		# Filenames
-		filenames_ic = sorted(glob.glob("input/SDO_int*"))
-		filenames_vv = sorted(glob.glob("input/SDO_vv*"))
+		self.directory='/home/btremblay/Dropbox/dir.DeepVelU_Supergranulation/'
+		filenames_ic = sorted(glob.glob(self.directory+"input/SDO_int*"))
+		filenames_vv = sorted(glob.glob(self.directory+"input/SDO_vv*"))
 		self.input_file_images_training = filenames_ic[0:self.n_training+1]
 		self.input_file_velocity_training = filenames_vv[0:self.n_training+1]
 		self.input_file_images_validation = filenames_ic[self.n_training+1:self.n_training+1+self.n_validation+1]
@@ -82,7 +83,7 @@ class train_deepvel(object):
 		self.batchs_per_epoch_validation = int(self.n_validation / self.batch_size)
 
 		# Normalization
-		tmp = np.load('properties/SteinSDO_properties.npz')
+		tmp = np.load(self.directory+'properties/SteinSDO_properties.npz')
 		self.ic1_min = tmp['ic1_min']
 		self.ic1_max = tmp['ic1_max']
 		self.ic1_mean = tmp['ic1_mean']
