@@ -59,7 +59,7 @@ class train_deepvel(object):
 		self.option = option
 
 		# Neural network properties
-		self.n_filters = 1#64
+		self.n_filters = 64
 		self.kernel_size = 3
 		self.batch_size = 32
 
