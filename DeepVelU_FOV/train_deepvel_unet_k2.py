@@ -33,6 +33,7 @@ class LossHistory(Callback):
 	def finalize(self):
 		pass
 
+
 class train_deepvel(object):
 
 	def __init__(self, root, noise, option):
@@ -54,7 +55,7 @@ class train_deepvel(object):
 		config = tf.compat.v1.ConfigProto()
 		config.gpu_options.allow_growth = True
 		session = tf.compat.v1.Session(config=config)
-		#ktf.set_session(session)
+		# ktf.set_session(session)
 		self.root = root
 		self.option = option
 
@@ -72,7 +73,7 @@ class train_deepvel(object):
 		self.n_components = 6
 
 		# Filenames
-		self.directory='/home/btremblay/Dropbox/dir.DeepVelU_Supergranulation/'
+		self.directory = ''
 		filenames_ic = sorted(glob.glob(self.directory+"input/SDO_int*"))
 		filenames_vv = sorted(glob.glob(self.directory+"input/SDO_vv*"))
 		self.input_file_images_training = filenames_ic[0:self.n_training+1]
@@ -123,7 +124,7 @@ class train_deepvel(object):
 	def training_generator(self):
 
 		# Shuffle
-		rnd=np.linspace(0, self.n_training-1, num=self.n_training, dtype='int')
+		rnd = np.linspace(0, self.n_training-1, num=self.n_training, dtype='int')
 		np.random.shuffle(rnd)
 
 		while 1:
