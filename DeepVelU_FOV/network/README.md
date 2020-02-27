@@ -1,0 +1,1 @@
+This directory contains the weights and biases of the DeepVel neural network.
