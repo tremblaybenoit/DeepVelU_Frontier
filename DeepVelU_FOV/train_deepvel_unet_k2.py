@@ -161,8 +161,8 @@ class train_deepvel(object):
 		while 1:
 			for i in range(self.batchs_per_epoch_validation):
 
-				input_validation = np.zeros((self.n_batch_size, self.nx, self.ny, self.n_times))
-				output_validation = np.zeros((self.n_batch_size, self.nx, self.ny, self.n_components))
+				input_validation = np.zeros((self.batch_size, self.nx, self.ny, self.n_times))
+				output_validation = np.zeros((self.batch_size, self.nx, self.ny, self.n_components))
 
 				for j in range(self.batch_size):
 
