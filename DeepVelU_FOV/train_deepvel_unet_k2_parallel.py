@@ -20,6 +20,20 @@ from keras.utils import multi_gpu_model
 import tensorflow as tf
 import keras.backend.tensorflow_backend as ktf
 
+def _get_available_gpus():
+    """Get a list of available gpu devices (formatted as strings).
+
+    # Returns
+        A list of available GPU devices.
+    """
+    #global _LOCAL_DEVICES
+    if ktf._LOCAL_DEVICES is None:
+        devices = tf.config.list_logical_devices()
+        ktf._LOCAL_DEVICES = [x.name for x in devices]
+    return [x for x in ktf._LOCAL_DEVICES if 'device:gpu' in x.lower()]
+
+ktf._get_available_gpus = _get_available_gpus
+
 
 class LossHistory(Callback):
 	def __init__(self, root, losses):
@@ -37,7 +51,7 @@ class LossHistory(Callback):
 
 class train_deepvel(object):
 
-	def __init__(self, root, noise, option):
+	def __init__(self, root, noise, option, gpus):
 		"""
 		Class used to train DeepVel
 
@@ -53,12 +67,13 @@ class train_deepvel(object):
 		"""
 
 		# Only allocate needed memory
-		config = tf.compat.v1.ConfigProto()
-		config.gpu_options.allow_growth = True
-		session = tf.compat.v1.Session(config=config)
+		#config = tf.compat.v1.ConfigProto()
+		#config.gpu_options.allow_growth = True
+		#session = tf.compat.v1.Session(config=config)
 		# ktf.set_session(session)
 		self.root = root
 		self.option = option
+		self.n_gpus = gpus
 
 		# Neural network properties
 		self.n_filters = 64
@@ -366,7 +381,7 @@ class train_deepvel(object):
 		kerasPlot(self.model, to_file='{0}_model.png'.format(self.root), show_shapes=True)
 
 	def compile_network(self):
-		self.parallel_model = multi_gpu_model(self.model, gpus=8)
+		self.parallel_model = multi_gpu_model(self.model, gpus=self.n_gpus)
 		self.parallel_model.compile(loss='mse', optimizer=Adam(lr=1e-4))
 
 	def read_network(self):
@@ -401,22 +416,17 @@ class train_deepvel(object):
 			print('Best val_loss: {0}'.format(self.checkpointer.best))
 		self.history = LossHistory(self.root, losses)
 		for i in range(n_iterations):
-			self.metrics = self.model.fit_generator(self.training_generator(), self.n_training, nb_epoch=1,
+			self.metrics = self.parallel_model.fit_generator(self.training_generator(), self.n_training, nb_epoch=1,
 			  callbacks=[self.checkpointer, self.history], validation_data=(self.validation_generator()), nb_val_samples=self.n_validation)
-			#self.metrics = self.model.fit([input1_training,input2_training],output_training, batch_size=self.batch_size, epochs=1,
-			#  callbacks=[self.checkpointer, self.history], validation_data=([input1_validation,input2_validation],output_validation))
-		#self.metrics = self.model.fit_generator(self.training_generator(), self.n_training, nb_epoch=n_iterations,
-		#	callbacks=[self.checkpointer, self.history], validation_data=self.validation_generator(), nb_val_samples=self.n_validation)
-
-		n_val_loss=len(losses)
-		list_val_loss=np.zeros(n_val_loss)
-		cnt=1
+		n_val_loss = len(losses)
+		list_val_loss = np.zeros(n_val_loss)
+		cnt = 1
 		for i in range(n_val_loss):
-			list_val_loss[i]=losses[i]['val_loss']
+			list_val_loss[i] = losses[i]['val_loss']
 			if((i > 0) and (list_val_loss[i] < np.amin(list_val_loss[0:i], axis=None))):
-				cnt=cnt+1
-		unique_val_loss=np.unique(list_val_loss)
-		n_unique_val_loss=cnt
+				cnt = cnt+1
+		unique_val_loss = np.unique(list_val_loss)
+		n_unique_val_loss = cnt
 		print("Total number of epochs performed: {0}; number of epochs with improvements: {1}".format(n_val_loss,n_unique_val_loss))
 		hdu = fits.PrimaryHDU(n_unique_val_loss)
 		hdulist = fits.HDUList([hdu])
@@ -425,21 +435,24 @@ class train_deepvel(object):
 
 		self.history.finalize()
 
+
 if (__name__ == '__main__'):
 
 	parser = argparse.ArgumentParser(description='Train DeepVel')
-	parser.add_argument('-o','--out', help='Output files')
-	parser.add_argument('-e','--epochs', help='Number of epochs', default=10)
-	parser.add_argument('-n','--noise', help='Noise to add during training', default=0.0)
-	parser.add_argument('-a','--action', help='Action', choices=['start', 'continue'], required=True)
+	parser.add_argument('-o', '--out', help='Output files')
+	parser.add_argument('-e', '--epochs', help='Number of epochs', default=10)
+	parser.add_argument('-n', '--noise', help='Noise to add during training', default=0.0)
+	parser.add_argument('-a', '--action', help='Action', choices=['start', 'continue'], required=True)
+	parser.add_argument('-g', '--gpus', help='Number of gpus', default=1)
 	parsed = vars(parser.parse_args())
 
 	root = parsed['out']
 	nEpochs = int(parsed['epochs'])
 	option = parsed['action']
 	noise = parsed['noise']
+	gpus = int(parsed['gpus'])
 
-	out = train_deepvel(root, noise, option)
+	out = train_deepvel(root, noise, option, gpus)
 
 	if (option == 'start'):
 		out.define_network()
