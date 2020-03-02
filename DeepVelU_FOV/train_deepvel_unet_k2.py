@@ -353,7 +353,7 @@ class train_deepvel(object):
 		upconv1 = Activation('relu')(upconv1)
 		upconv1 = Dropout(0.5)(upconv1)
 
-		final = Conv2D(self.n_components, (1, 1), strides=(1,1), activation='linear', padding='same', init='he_normal')(upconv1)
+		final = Conv2D(self.n_components, (1, 1), strides=(1, 1), activation='linear', padding='same', init='he_normal')(upconv1)
 
 		self.model = Model(inputs=inputs_ic, output=final)
 
@@ -362,7 +362,7 @@ class train_deepvel(object):
 		f.write(json_string)
 		f.close()
 
-		#kerasPlot(self.model, to_file='{0}_model.png'.format(self.root), show_shapes=True)
+		kerasPlot(self.model, to_file='{0}_model.png'.format(self.root), show_shapes=True)
 
 	def compile_network(self):
 		self.model.compile(loss='mse', optimizer=Adam(lr=1e-4))
