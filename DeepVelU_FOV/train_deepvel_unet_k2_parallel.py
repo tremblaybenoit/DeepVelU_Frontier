@@ -67,9 +67,9 @@ class train_deepvel(object):
 		"""
 
 		# Only allocate needed memory
-		#config = tf.compat.v1.ConfigProto()
-		#config.gpu_options.allow_growth = True
-		#session = tf.compat.v1.Session(config=config)
+		config = tf.compat.v1.ConfigProto()
+		config.gpu_options.allow_growth = True
+		session = tf.compat.v1.Session(config=config)
 		# ktf.set_session(session)
 		self.root = root
 		self.option = option
