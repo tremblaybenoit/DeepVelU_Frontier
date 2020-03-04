@@ -10,14 +10,13 @@ os.environ["KERAS_BACKEND"] = "tensorflow"
 if (platform.node() != 'vena'):
 	os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-# import tensorflow as tf
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 tf.disable_v2_behavior()
 import keras.backend.tensorflow_backend as ktf
 from keras.layers import Input, Conv2D, Activation, BatchNormalization, Concatenate, Dropout, UpSampling2D
 from keras.models import Model
-# IDL...
+# IDL
 import idlsave
 
 
@@ -156,7 +155,7 @@ class deepvel(object):
 		
 		input_validation = np.zeros((self.batch_size, self.nx, self.ny, 2), dtype='float32')
 		
-		if(self.ic1_read_median == 1):
+		if(self.ic1_read_median == 0):
 			self.ic1_median = np.median(self.observations[:, self.border_x1:self.border_x1+self.nx, self.border_y1:self.border_y1+self.ny])
 		
 		while 1:
