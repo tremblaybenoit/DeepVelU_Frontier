@@ -22,7 +22,7 @@ import idlsave
 
 class deepvel(object):
 	
-	def __init__(self, observations, output, border_x1=0, border_x2=0, border_y1=0, border_y2=0, same_as_training=0, network_path='network/'):
+	def __init__(self, observations, output, border_x1=0, border_x2=0, border_y1=0, border_y2=0, same_as_training=0, network_path='network'):
 		"""
 		---------
 		Keywords:
@@ -233,7 +233,7 @@ if (__name__ == '__main__'):
 	parser.add_argument('-by1', '--border_y1', help='Border size in pixels', default=0)
 	parser.add_argument('-by2', '--border_y2', help='Border size in pixels', default=0)
 	parser.add_argument('-sim', '--simulation', help='Set to 1 if data is from the same simulation as the training set', default=0)
-	parser.add_argument('-n', '--network', help='Path to network weights and normalization values', default='network/')
+	parser.add_argument('-n', '--network', help='Path to network weights and normalization values', default='network')
 	parsed = vars(parser.parse_args())
 	
 	# Open file with observations and read them

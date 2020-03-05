@@ -22,18 +22,34 @@ import idlsave
 
 class deepvel(object):
 	
-	def __init__(self, observations, output, border_x1=0, border_x2=0, border_y1=0, border_y2=0, read_ic1_median=0):
+	def __init__(self, observations, output, border_x1=0, border_x2=0, border_y1=0, border_y2=0, same_as_training=0, network_path='network'):
 		"""
-
-		Parameters
-		----------
-		observations : array
-			Array of size (n_times, nx, ny) with the n_times consecutive images of size nx x ny
-		output : string
-			Filename were the output is saved
-		border : int (optional)
-			Portion of the borders to be removed during computations. This is useful if images are
-			apodized
+		---------
+		Keywords:
+		---------
+		
+		observations: Input array of shape (nx, ny, n_times*n_inputs) where
+						nx & ny: Image dimensions
+						n_times: Number of consecutive timesteps
+						n_inputs: Number of types of inputs
+		
+		output: Output array of dimensions (nx, ny, n_depths*n_comp) where
+						nx & ny: Image dimensions
+						n_depths: Number of optical/geometrical depths to infer
+						n_comp: Number of components of the velocity vector to infer
+		
+		border: Number of pixels to crop from the image in each direction
+						border_x1: Number of pixels to remove from the left of the image
+						border_x2: Number of pixels to remove from the right of the image
+						border_y1: Number of pixels to remove from the bottom of the image
+						border_y2: Number of pixels to remove from the top of the image
+						
+		same_as_training: Set to 1 if using data from the same simulation as the one used for training.
+							-> The inputs will be normalized using the same values as the inputs in the
+								training set because the values are known.
+								
+		network: Provide path to the network weights and normalization values
+		
 		"""
 		
 		# Only allocate needed memory with Tensorflow
@@ -42,26 +58,52 @@ class deepvel(object):
 		session = tf.compat.v1.Session(config=config)
 		# ktf.set_session(session)
 		
+		# -----------------
+		# Input properties:
+		# -----------------
+		# Read
+		self.observations = observations
+		n_timesteps, nx, ny = observations.shape
+		# Number of types of inputs
+		self.n_inputs = 1
+		# Number of consecutive frames of a given input
+		self.n_times = 2
+		# Number of images to generate
+		self.n_frames = n_timesteps - 1
+		# Image dimensions
 		self.border_x1 = border_x1
 		self.border_x2 = border_x2
 		self.border_y1 = border_y1
 		self.border_y2 = border_y2
-		n_timesteps, nx, ny = observations.shape
-		
-		self.n_frames = n_timesteps - 1
-		
 		self.nx = nx - self.border_x1 - self.border_x2
 		self.ny = ny - self.border_y1 - self.border_y2
 		
-		self.n_times = 2
+		# ------------------
+		# Output properties:
+		# ------------------
+		# Filename
+		self.output = output
+		# Number of inferred depths
+		self.n_depths = 1
+		# Number of inferred velocity components
+		self.n_comp = 2
+		self.n_outputs = self.n_depths*self.n_comp
+		
+		# -----------------
+		# Network properties:
+		# -----------------
+		# Load training weights
+		self.network_path = network_path
+		self.weights_filename = self.network_path+'/deepvel_weights.hdf5'
 		self.n_filters = 64
 		self.kernel_size = 3
 		self.batch_size = 1
-		self.observations = observations
-		self.output = output
 		
-		self.ic1_read_median = read_ic1_median
-		filename_idl = "network/MURaM_AR_Properties.sav"
+		# ------------------------
+		# Training set properties:
+		# ------------------------
+		# Load simulation min/max/mean/median/stddev
+		filename_idl = self.network_path+"/MURaM_AR_Properties.sav"
 		s_idl = idlsave.read(filename_idl)
 		
 		self.ic1_min = s_idl.data_minmax.ic1_min[0]
@@ -84,11 +126,17 @@ class deepvel(object):
 		self.bz1_mean = s_idl.data_minmax.bz1_mean[0]
 		self.bz1_median = s_idl.data_minmax.bz1_median[0]
 		self.bz1_stddev = s_idl.data_minmax.bz1_stddev[0]
+		
+		# --------------------
+		# Test set properties:
+		# --------------------
+		# Use same normalization values as for the training and validation sets
+		self.same_as_training = same_as_training
 	
 	def define_network(self):
 		print("Setting up network...")
 		
-		inputs = Input(shape=(self.nx, self.ny, self.n_times))
+		inputs = Input(shape=(self.nx, self.ny, self.n_inputs*self.n_times))
 		x = inputs
 
 		conv1 = Conv2D(self.n_filters, (self.kernel_size, self.kernel_size), strides=(1, 1), padding='same', init='he_normal')(x)
@@ -146,16 +194,16 @@ class deepvel(object):
 		upconv1 = BatchNormalization()(upconv1)
 		upconv1 = Activation('relu')(upconv1)
 		
-		final = Conv2D(2, (1, 1), strides=(1, 1), activation='linear', padding='same', init='he_normal')(upconv1)
+		final = Conv2D(self.n_outputs, (1, 1), strides=(1, 1), activation='linear', padding='same', init='he_normal')(upconv1)
 		
 		self.model = Model(input=inputs, output=final)
-		self.model.load_weights('network/deepvel_weights.hdf5')
+		self.model.load_weights(self.weights_filename)
 	
 	def validation_generator(self):
 		
-		input_validation = np.zeros((self.batch_size, self.nx, self.ny, 2), dtype='float32')
+		input_validation = np.zeros((self.batch_size, self.nx, self.ny, self.n_inputs*self.n_times), dtype='float32')
 		
-		if(self.ic1_read_median == 0):
+		if(self.same_as_training == 0):
 			self.ic1_median = np.median(self.observations[:, self.border_x1:self.border_x1+self.nx, self.border_y1:self.border_y1+self.ny])
 		
 		while 1:
@@ -182,7 +230,7 @@ class deepvel(object):
 		
 		out[:, :, :, 0] = out[:, :, :, 0] * (self.vx1_max - self.vx1_min) + self.vx1_min
 		out[:, :, :, 1] = out[:, :, :, 1] * (self.vy1_max - self.vy1_min) + self.vy1_min
-		
+	
 		hdu = fits.PrimaryHDU(out)
 		hdulist = fits.HDUList([hdu])
 		hdulist.writeto(self.output, overwrite=True)
@@ -196,10 +244,11 @@ if (__name__ == '__main__'):
 	parser.add_argument('-bx2', '--border_x2', help='Border size in pixels', default=0)
 	parser.add_argument('-by1', '--border_y1', help='Border size in pixels', default=0)
 	parser.add_argument('-by2', '--border_y2', help='Border size in pixels', default=0)
-	parser.add_argument('-median', '--median', help='Read median value from file', default=0)
+	parser.add_argument('-sim', '--simulation', help='Set to 1 if data is from the same simulation as the training set', default=0)
+	parser.add_argument('-n', '--network', help='Path to network weights and normalization values', default='network')
 	parsed = vars(parser.parse_args())
 	
-	# Open file with observations and read them. We use FITS in our case
+	# Open file with observations and read them
 	f = fits.open(parsed['in'])
 	imgs = f[0].data
 	
@@ -208,6 +257,7 @@ if (__name__ == '__main__'):
 								border_x2=int(parsed['border_x2']),
 								border_y1=int(parsed['border_y1']),
 								border_y2=int(parsed['border_y2']),
-								read_ic1_median=int(parsed['median']))
+								same_as_training=int(parsed['simulation']),
+								network_path=parsed['network'])
 	out.define_network()
 	out.predict()
