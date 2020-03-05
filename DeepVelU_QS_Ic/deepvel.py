@@ -135,7 +135,7 @@ class deepvel(object):
 		upconv1 = BatchNormalization()(upconv1)
 		upconv1 = Activation('relu')(upconv1)
 		
-		final = Conv2D(2, (1, 1), strides=(1, 1), activation='linear', padding='same', init='he_normal')(upconv1)
+		final = Conv2D(6, (1, 1), strides=(1, 1), activation='linear', padding='same', init='he_normal')(upconv1)
 		
 		self.model = Model(input=inputs, output=final)
 		self.model.load_weights('network/deepvel_weights.hdf5')
