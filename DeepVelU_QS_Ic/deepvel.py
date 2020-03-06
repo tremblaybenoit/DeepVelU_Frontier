@@ -12,7 +12,6 @@ if (platform.node() != 'vena'):
 
 import tensorflow as tf
 
-tf.disable_v2_behavior()
 import keras.backend.tensorflow_backend as ktf
 from keras.layers import Input, Conv2D, Activation, BatchNormalization, Concatenate, Dropout, UpSampling2D
 from keras.models import Model
